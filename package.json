@@ -1,0 +1,9 @@
+{
+  "name": "neural-data-visualization",
+  "version": "1.0.0",
+  "description": "Publication-ready neural data visualization tools with physical cm sizing and SVG/PNG export.",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}

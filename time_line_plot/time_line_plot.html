@@ -1,95 +1,404 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Series Line Plot — Neural Data Visualization</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    :root {
+      --bg-page: #f5f7fa;
+      --bg-card: #ffffff;
+      --border-color: #dce3ec;
+      --text-primary: #1f2937;
+      --text-secondary: #526071;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --error-bg: #fef2f2;
+      --error-border: #fca5a5;
+      --error-text: #991b1b;
+      --info-bg: #eff6ff;
+      --info-border: #bfdbfe;
+      --info-text: #1e40af;
+    }
 
-<!-- Load d3.js -->
-<script src="https://d3js.org/d3.v6.js"></script>
+    * {
+      box-sizing: border-box;
+    }
 
-<!-- Add a title for the control panel -->
-<h2>Time Series Line Plot 1</h2>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.45;
+    }
 
-<!-- Create a control panel -->
-<div id="control-panel">
-  <!-- Subheading for Canvas Size -->
-  <h3>Canvas Size</h3>
-  <div class="control-row">
-    <label for="width">Width (cm):</label>
-    <input type="number" id="width" value="16.2" min="5" step="0.1" data-param="width">
-    <label for="height">Height (cm):</label>
-    <input type="number" id="height" value="14.1" min="5" step="0.1" data-param="height">
-  </div>
+    .page-header {
+      max-width: 1400px;
+      margin: 0 auto 16px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
 
-  <!-- Subheading for Margins -->
-  <h3>Margins</h3>
-  <div class="control-row">
-    <label for="margin-top">Top (cm):</label>
-    <input type="number" id="margin-top" value="1" min="0" step="0.1">
-    <label for="margin-right">Right (cm):</label>
-    <input type="number" id="margin-right" value="1" min="0" step="0.1">
-  </div>
-  <div class="control-row">
-    <label for="margin-bottom">Bottom (cm):</label>
-    <input type="number" id="margin-bottom" value="1" min="0" step="0.1">
-    <label for="margin-left">Left (cm):</label>
-    <input type="number" id="margin-left" value="1.5" min="0" step="0.1">
-  </div>
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
 
-  <!-- Subheading for Axis Margins -->
-  <h3>Axis Margins</h3>
-  <div class="control-row">
-    <label for="axis-margin-x">X-Axis Margin (cm):</label>
-    <input type="number" id="axis-margin-x" value="0.5" min="0" step="0.1">
-    <label for="axis-margin-y">Y-Axis Margin (cm):</label>
-    <input type="number" id="axis-margin-y" value="0.5" min="0" step="0.1">
-  </div>
+    .page-header .subtitle {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
 
-  <!-- Update Button -->
-  <div class="control-row">
-    <button id="update" data-param="update">Update Size</button>
-  </div>
-</div>
+    .workspace {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
 
-<!-- Create a div where the graph will take place -->
-<div id="my_dataviz" data-width="16.2" data-height="14.1"></div>
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
 
-<!-- Add CSS for styling -->
-<style>
-  #control-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* 增加子标题和内容之间的间距 */
-    max-width: 600px; /* 增加宽度，避免换行 */
-    margin-bottom: 20px;
-  }
+    #control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-  .control-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px; /* 增加元素之间的间距 */
-    flex-wrap: nowrap; /* 禁止换行 */
-  }
+    .control-section {
+      border-bottom: 1px solid #eef2f6;
+      padding-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
 
-  .control-row label {
-    flex: 0 0 150px; /* 调整标签宽度，避免换行 */
-    text-align: right;
-  }
+    .control-section:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
 
-  .control-row input {
-    flex: 1; /* 输入框占据剩余空间 */
-    max-width: 100px; /* 限制输入框宽度 */
-  }
+    .control-section h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
 
-  .control-row button {
-    flex: 1;
-    padding: 5px;
-    max-width: 150px; /* 限制按钮宽度 */
-  }
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
 
-  h3 {
-    margin: 0;
-    font-size: 1.2em;
-    font-weight: bold;
-  }
-</style>
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
 
-<script src="./chart.js"></script>
+    .field.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .field input[type="number"],
+    .field input[type="text"],
+    .field input[type="file"] {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      color: var(--text-primary);
+      background: #fff;
+    }
+
+    .field input[type="color"] {
+      width: 100%;
+      height: 34px;
+      padding: 2px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text-primary);
+      font-size: 0.86rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .status-banner {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      background: var(--info-bg);
+      border: 1px solid var(--info-border);
+      color: var(--info-text);
+    }
+
+    .error-banner {
+      display: none;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+      margin-bottom: 12px;
+    }
+
+    .error-banner.visible {
+      display: block;
+    }
+
+    .error-banner ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
+
+    .canvas-panel {
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .canvas-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eef2f6;
+    }
+
+    .canvas-meta {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+    }
+
+    #my_dataviz {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 240px;
+      padding: 8px;
+      background: #fafbfd;
+      border: 1px dashed #d5dde7;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    #my_dataviz svg {
+      display: block;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+      background: #ffffff;
+    }
+
+    #chart-tooltip {
+      position: fixed;
+      pointer-events: none;
+      opacity: 0;
+      background: rgba(15, 23, 42, 0.92);
+      color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+      transition: opacity 0.1s ease;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 960px) {
+      body {
+        padding: 12px;
+      }
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>Time Series Line Plot</h1>
+    <p class="subtitle">Publication-ready neural time-series visualization with physical cm sizing &amp; SVG/PNG export</p>
+  </header>
+
+  <main class="workspace">
+    <aside id="control-panel" class="card" aria-label="Chart controls">
+      <section class="control-section">
+        <h2>Data Source</h2>
+        <div class="field">
+          <label for="csv-file">Upload Local CSV (<code>x, y</code> + optional <code>CI_left, CI_right</code>)</label>
+          <input type="file" id="csv-file" accept=".csv,text/csv">
+        </div>
+        <div class="button-row">
+          <button type="button" id="load-remote-sample">Load Remote Sample</button>
+          <button type="button" id="load-builtin-sample">Built-in Sample</button>
+        </div>
+        <div id="data-status" class="status-banner" role="status">Loading sample data…</div>
+      </section>
+
+      <section class="control-section">
+        <h2>Canvas Size (Total SVG, cm)</h2>
+        <div class="control-grid">
+          <div class="field">
+            <label for="width">Width (cm)</label>
+            <input type="number" id="width" value="16.2" min="1" step="0.1" data-param="width">
+          </div>
+          <div class="field">
+            <label for="height">Height (cm)</label>
+            <input type="number" id="height" value="14.1" min="1" step="0.1" data-param="height">
+          </div>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Margins (cm)</h2>
+        <div class="control-grid">
+          <div class="field">
+            <label for="margin-top">Top (cm)</label>
+            <input type="number" id="margin-top" value="1.5" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label for="margin-right">Right (cm)</label>
+            <input type="number" id="margin-right" value="1" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label for="margin-bottom">Bottom (cm)</label>
+            <input type="number" id="margin-bottom" value="1.8" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label for="margin-left">Left (cm)</label>
+            <input type="number" id="margin-left" value="2" min="0" step="0.1">
+          </div>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Axis Margins (cm)</h2>
+        <div class="control-grid">
+          <div class="field">
+            <label for="axis-margin-x">X-Axis Margin (cm)</label>
+            <input type="number" id="axis-margin-x" value="0.5" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label for="axis-margin-y">Y-Axis Margin (cm)</label>
+            <input type="number" id="axis-margin-y" value="0.5" min="0" step="0.1">
+          </div>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Labels &amp; Styling</h2>
+        <div class="control-grid">
+          <div class="field full-width">
+            <label for="chart-title">Chart Title</label>
+            <input type="text" id="chart-title" value="Neural Time Series">
+          </div>
+          <div class="field">
+            <label for="x-label">X-Axis Label</label>
+            <input type="text" id="x-label" value="Time (ms)">
+          </div>
+          <div class="field">
+            <label for="y-label">Y-Axis Label</label>
+            <input type="text" id="y-label" value="Response (a.u.)">
+          </div>
+          <div class="field">
+            <label for="line-color">Line Color</label>
+            <input type="color" id="line-color" value="#4682b4">
+          </div>
+          <div class="field">
+            <label for="ci-color">CI Fill Color</label>
+            <input type="color" id="ci-color" value="#cce5df">
+          </div>
+          <div class="field full-width">
+            <label for="line-width">Line Width (px)</label>
+            <input type="number" id="line-width" value="1.5" min="0.5" max="10" step="0.1">
+          </div>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <div class="button-row">
+          <button type="button" id="update" class="primary" data-param="update">Update Chart</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="card canvas-panel" aria-label="Chart preview">
+      <div class="canvas-toolbar">
+        <div id="canvas-meta" class="canvas-meta">Ready</div>
+        <div class="button-row">
+          <button type="button" id="export-svg">Export SVG</button>
+          <button type="button" id="export-png">Export PNG (3x)</button>
+        </div>
+      </div>
+
+      <div id="error-banner" class="error-banner" role="alert"></div>
+      <div id="my_dataviz" data-width="16.2" data-height="14.1"></div>
+    </section>
+  </main>
+
+  <div id="chart-tooltip" aria-hidden="true"></div>
+
+  <script src="./chart-utils.js"></script>
+  <script src="./chart.js"></script>
+</body>
+</html>
